@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
-from chia_rs import G1Element
+from chia_rs import ClassgroupElement, G1Element
 from pytest_mock import MockerFixture
 
 from chia.cmds.cmds_util import get_any_service_client
@@ -27,8 +27,9 @@ from chia.server.server import ChiaServer
 from chia.server.start_service import Service
 from chia.server.ws_connection import WSChiaConnection
 from chia.simulator.block_tools import BlockTools
-from chia.types.blockchain_format.foliage import FoliageBlockData
+from chia.types.blockchain_format.foliage import FoliageBlockData, FoliageTransactionBlock
 from chia.types.blockchain_format.sized_bytes import bytes32
+from chia.types.blockchain_format.slots import ChallengeChainSubSlot, RewardChainSubSlot
 from chia.types.peer_info import UnresolvedPeerInfo
 from chia.util.bech32m import decode_puzzle_hash
 from chia.util.config import load_config
@@ -38,7 +39,6 @@ from chia.util.keychain import generate_mnemonic
 from chia.util.misc import split_async_manager
 from chia.util.streamable import Streamable
 from tests.conftest import HarvesterFarmerEnvironment
-from tests.util.network_protocol_data import *  # noqa: F403
 from tests.util.time_out_assert import time_out_assert
 
 
