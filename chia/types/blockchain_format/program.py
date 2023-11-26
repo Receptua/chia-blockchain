@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import io
-from typing import Any, Callable, Dict, Set, Tuple
+from typing import Any, BinaryIO, Callable, Dict, Generator, Optional, Set, Tuple
 
 from chia_rs import ALLOW_BACKREFS, run_chia_program, tree_hash
 from clvm import SExp
-from clvm.casts import int_from_bytes
 from clvm.EvalError import EvalError
 from clvm.serialize import sexp_from_stream, sexp_to_stream
+from clvm.SExp import CastableType
 
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.util.byte_types import hexstr_to_bytes
@@ -18,20 +18,82 @@ from .tree_hash import sha256_treehash
 INFINITE_COST = 11000000000
 
 
-class Program(SExp):
+class Program:
     """
     A thin wrapper around s-expression data intended to be invoked with "eval".
     """
 
-    @classmethod
-    def parse(cls, f) -> Program:
-        return sexp_from_stream(f, cls.to)
+    _inner: SExp
 
-    def stream(self, f):
-        sexp_to_stream(self, f)
+    def __init__(self, inner: SExp):
+        self._inner = inner
 
-    @classmethod
-    def from_bytes(cls, blob: bytes) -> Program:
+    # TODO: deprecate this. Same as .atom property
+    def as_atom(self) -> Optional[bytes]:
+        return self._inner.as_atom()
+
+    def as_pair(self) -> Optional[Tuple[Program, Program]]:
+        pair = self._inner.as_pair()
+        if pair is None:
+            return None
+        return (Program(pair[0]), Program(pair[1]))
+
+    def first(self) -> Program:
+        return Program(self._inner.first())
+
+    def rest(self) -> Program:
+        return Program(self._inner.rest())
+
+    def as_iter(self) -> Generator[Program, None, None]:
+        v = self._inner
+        while not v.nullp():
+            yield Program(v.first())
+            v = v.rest()
+
+    def listp(self) -> bool:
+        return self._inner.listp()
+
+    def nullp(self) -> bool:
+        return self._inner.nullp()
+
+    def cons(self, right: CastableType) -> Program:
+        return Program.to((self._inner, Program.to(right)))
+
+    def __eq__(self, other: CastableType) -> bool:
+        return self._inner == other
+
+    def list_len(self) -> int:
+        return self._inner.list_len()
+
+    def as_bin(self) -> bytes:
+        return self._inner.as_bin()
+
+    def as_python(self) -> Any:
+        return self._inner.as_python()
+
+    @property
+    def atom(self) -> Optional[bytes]:
+        return self._inner.as_atom()
+
+    @property
+    def pair(self) -> Optional[Tuple[Program, Program]]:
+        return self.as_pair()
+
+    @staticmethod
+    def to(v: CastableType) -> Program:
+        if isinstance(v, Program):
+            return v
+        return Program(SExp.to(v))
+
+    @staticmethod
+    def parse(f: BinaryIO) -> Program:
+        return sexp_from_stream(f, Program.to)
+
+    def stream(self, f: io.BytesIO) -> None:
+        sexp_to_stream(self._inner, f)
+
+    @staticmethod
+    def from_bytes(blob: bytes) -> Program:
         # this runs the program "1", which just returns the first argument.
         # the first argument is the buffer we want to parse. This effectively
         # leverages the rust parser and LazyNode, making it a lot faster to
@@ -44,9 +106,9 @@ class Program(SExp):
         )
         return Program.to(ret)
 
-    @classmethod
-    def fromhex(cls, hexstr: str) -> Program:
-        return cls.from_bytes(hexstr_to_bytes(hexstr))
+    @staticmethod
+    def fromhex(hexstr: str) -> Program:
+        return Program.from_bytes(hexstr_to_bytes(hexstr))
 
     def __bytes__(self) -> bytes:
         f = io.BytesIO()
@@ -54,7 +116,10 @@ class Program(SExp):
         return f.getvalue()
 
     def __str__(self) -> str:
-        return bytes(self).hex()
+        return self.as_bin().hex()
+
+    def __repr__(self):
+        return f"Program({self})"
 
     def at(self, position: str) -> Program:
         """
@@ -103,7 +168,7 @@ class Program(SExp):
         Any values in `args` that appear in the tree
         are presumed to have been hashed already.
         """
-        return sha256_treehash(self, set(args))
+        return sha256_treehash(self._inner, set(args))
 
     def get_tree_hash(self) -> bytes32:
         return bytes32(tree_hash(bytes(self)))
@@ -140,7 +205,7 @@ class Program(SExp):
         fixed_args: Any = 1
         for arg in reversed(args):
             fixed_args = [4, (1, arg), fixed_args]
-        return Program.to([2, (1, self), fixed_args])
+        return Program.to([2, (1, self._inner), fixed_args])
 
     def uncurry(self) -> Tuple[Program, Program]:
         def match(o: SExp, expected: bytes) -> None:
@@ -166,19 +231,19 @@ class Program(SExp):
         except ValueError:  # too many values to unpack
             # when unpacking as_iter()
             # or when a match() fails
-            return self, self.to(0)
+            return self, Program.to(0)
         except TypeError:  # NoneType not subscriptable
             # when an object is not a pair or atom as expected
-            return self, self.to(0)
+            return self, Program.to(0)
         except EvalError:  # first of non-cons
             # when as_iter() fails
-            return self, self.to(0)
+            return self, Program.to(0)
 
     def as_int(self) -> int:
-        return int_from_bytes(self.as_atom())
+        return self._inner.as_int()
 
     def __deepcopy__(self, memo):
-        return type(self).from_bytes(bytes(self))
+        return Program.from_bytes(bytes(self))
 
     EvalError = EvalError
 
