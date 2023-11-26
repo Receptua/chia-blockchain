@@ -8,6 +8,7 @@ from clvm_tools import binutils
 from chia.consensus.block_rewards import calculate_base_farmer_reward, calculate_pool_reward
 from chia.rpc.full_node_rpc_client import FullNodeRpcClient
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.coin_spend import CoinSpend
 from chia.types.condition_opcodes import ConditionOpcode
 from chia.types.spend_bundle import SpendBundle
@@ -51,10 +52,10 @@ async def main() -> None:
         ph1 = decode_puzzle_hash(address1)
         ph2 = decode_puzzle_hash(address2)
 
-        p_farmer_2 = Program.to(
+        p_farmer_2 = SerializedProgram.to(
             binutils.assemble(f"(q . ((51 0x{ph1.hex()} {farmer_amounts}) (51 0x{ph2.hex()} {farmer_amounts})))")
         )
-        p_pool_2 = Program.to(
+        p_pool_2 = SerializedProgram.to(
             binutils.assemble(f"(q . ((51 0x{ph1.hex()} {pool_amounts}) (51 0x{ph2.hex()} {pool_amounts})))")
         )
 
@@ -63,7 +64,7 @@ async def main() -> None:
         assert ph1.hex() == "1b7ab2079fa635554ad9bd4812c622e46ee3b1875a7813afba127bb0cc9794f9"
         assert ph2.hex() == "6f184a7074c925ef8688ce56941eb8929be320265f824ec7e351356cc745d38a"
 
-        p_solution = Program.to(binutils.assemble("()"))
+        p_solution = SerializedProgram.to(binutils.assemble("()"))
 
         sb_farmer = SpendBundle([CoinSpend(farmer_prefarm, p_farmer_2, p_solution)], G2Element())
         sb_pool = SpendBundle([CoinSpend(pool_prefarm, p_pool_2, p_solution)], G2Element())
