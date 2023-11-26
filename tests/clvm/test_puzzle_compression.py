@@ -9,6 +9,7 @@ from chia_rs import G1Element, G2Element
 
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.spend_bundle import SpendBundle
@@ -27,7 +28,7 @@ from chia.wallet.util.puzzle_compression import (
 ZERO_32 = bytes32([0] * 32)
 ONE_32 = bytes32([17] * 32)
 COIN = Coin(ZERO_32, ZERO_32, uint64(0))
-SOLUTION = Program.to([])
+SOLUTION = SerializedProgram.to([])
 
 
 log = logging.getLogger(__name__)
@@ -51,7 +52,7 @@ def report_compression_fixture(record_property):
 def test_standard_puzzle(report_compression):
     coin_spend = CoinSpend(
         COIN,
-        puzzle_for_pk(G1Element()),
+        SerializedProgram.from_program(puzzle_for_pk(G1Element())),
         SOLUTION,
     )
     compressed = compress_object_with_puzzles(bytes(coin_spend), LATEST_VERSION)
@@ -73,7 +74,7 @@ def test_decompress_limit():
 def test_cat_puzzle(report_compression):
     coin_spend = CoinSpend(
         COIN,
-        construct_cat_puzzle(CAT_MOD, Program.to([]).get_tree_hash(), Program.to(1)),
+        SerializedProgram.from_program(construct_cat_puzzle(CAT_MOD, Program.to([]).get_tree_hash(), Program.to(1))),
         SOLUTION,
     )
     compressed = compress_object_with_puzzles(bytes(coin_spend), LATEST_VERSION)
@@ -86,7 +87,7 @@ def test_cat_puzzle(report_compression):
 def test_offer_puzzle(report_compression):
     coin_spend = CoinSpend(
         COIN,
-        OFFER_MOD,
+        SerializedProgram.from_program(OFFER_MOD),
         SOLUTION,
     )
     compressed = compress_object_with_puzzles(bytes(coin_spend), LATEST_VERSION)
@@ -99,7 +100,9 @@ def test_offer_puzzle(report_compression):
 def test_nesting_puzzles(report_compression):
     coin_spend = CoinSpend(
         COIN,
-        construct_cat_puzzle(CAT_MOD, Program.to([]).get_tree_hash(), puzzle_for_pk(G1Element())),
+        SerializedProgram.from_program(
+            construct_cat_puzzle(CAT_MOD, Program.to([]).get_tree_hash(), puzzle_for_pk(G1Element()))
+        ),
         SOLUTION,
     )
     compressed = compress_object_with_puzzles(bytes(coin_spend), LATEST_VERSION)
@@ -113,7 +116,7 @@ def test_unknown_wrapper(report_compression):
     unknown = Program.to([2, 2, []])  # (a 2 ())
     coin_spend = CoinSpend(
         COIN,
-        unknown.curry(puzzle_for_pk(G1Element())),
+        SerializedProgram.from_program(unknown.curry(puzzle_for_pk(G1Element()))),
         SOLUTION,
     )
     compressed = compress_object_with_puzzles(bytes(coin_spend), LATEST_VERSION)
@@ -132,7 +135,7 @@ def test_lowest_best_version():
 def test_version_override():
     coin_spend = CoinSpend(
         COIN,
-        OFFER_MOD,
+        SerializedProgram.from_program(OFFER_MOD),
         SOLUTION,
     )
     spend_bundle = SpendBundle([coin_spend], G2Element())

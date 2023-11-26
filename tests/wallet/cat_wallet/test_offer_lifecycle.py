@@ -10,6 +10,7 @@ from chia.clvm.spend_sim import sim_and_client
 from chia.types.announcement import Announcement
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.mempool_inclusion_status import MempoolInclusionStatus
@@ -83,8 +84,8 @@ async def generate_coins(
         [
             CoinSpend(
                 parent_coin,
-                acs,
-                Program.to([[51, p.puzzle_hash, p.amount] for p in payments]),
+                SerializedProgram.from_program(acs),
+                SerializedProgram.to([[51, p.puzzle_hash, p.amount] for p in payments]),
             )
         ],
         G2Element(),
@@ -139,10 +140,10 @@ def generate_secure_bundle(
             [
                 CoinSpend(
                     selected_coins[0],
-                    acs,
-                    Program.to(inner_solution),
+                    SerializedProgram.from_program(acs),
+                    SerializedProgram.to(inner_solution),
                 ),
-                *[CoinSpend(c, acs, Program.to([])) for c in non_primaries],
+                *[CoinSpend(c, SerializedProgram.from_program(acs), SerializedProgram.to([])) for c in non_primaries],
             ],
             G2Element(),
         )
@@ -299,11 +300,13 @@ class TestOfferLifecycle:
             assert new_offer.is_valid()
 
             # Test preventing TAIL from running during exchange
-            blue_cat_puz: Program = construct_cat_puzzle(CAT_MOD, str_to_tail_hash("blue"), OFFER_MOD)
+            blue_cat_puz = SerializedProgram.from_program(
+                construct_cat_puzzle(CAT_MOD, str_to_tail_hash("blue"), OFFER_MOD)
+            )
             blue_spend: CoinSpend = CoinSpend(
                 Coin(bytes32(32), blue_cat_puz.get_tree_hash(), uint64(0)),
                 blue_cat_puz,
-                Program.to([[bytes32(32), [bytes32(32), 200, ["hey there"]]]]),
+                SerializedProgram.to([[bytes32(32), [bytes32(32), 200, ["hey there"]]]]),
             )
             new_spends_list: List[CoinSpend] = [blue_spend, *new_offer.to_spend_bundle().coin_spends]
             tail_offer: Offer = Offer.from_spend_bundle(SpendBundle(new_spends_list, G2Element()))
@@ -311,8 +314,10 @@ class TestOfferLifecycle:
             real_blue_spend = [spend for spend in valid_spend.coin_spends if b"hey there" in bytes(spend)][0]
             real_blue_spend_replaced = replace(
                 real_blue_spend,
-                solution=real_blue_spend.solution.to_program().replace(
-                    ffrfrf=Program.to(-113), ffrfrr=Program.to([str_to_tail("blue"), []])
+                solution=SerializedProgram.from_program(
+                    real_blue_spend.solution.to_program().replace(
+                        ffrfrf=Program.to(-113), ffrfrr=Program.to([str_to_tail("blue"), []])
+                    )
                 ),
             )
             valid_spend = SpendBundle(

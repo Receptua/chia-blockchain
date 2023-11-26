@@ -4,20 +4,21 @@ from typing import Iterator, List, Optional, Tuple
 
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.condition_opcodes import ConditionOpcode
 from chia.util.hash import std_hash
 from chia.util.ints import uint64
 from chia.wallet.lineage_proof import LineageProof
-from chia.wallet.puzzles.load_clvm import load_clvm_maybe_recompile
+from chia.wallet.puzzles.load_clvm import load_clvm_maybe_recompile, load_serialized_clvm_maybe_recompile
 from chia.wallet.uncurried_puzzle import UncurriedPuzzle
 
 SINGLETON_MOD = load_clvm_maybe_recompile("singleton_top_layer_v1_1.clsp")
 SINGLETON_MOD_HASH = SINGLETON_MOD.get_tree_hash()
 P2_SINGLETON_MOD = load_clvm_maybe_recompile("p2_singleton.clsp")
 P2_SINGLETON_OR_DELAYED_MOD = load_clvm_maybe_recompile("p2_singleton_or_delayed_puzhash.clsp")
-SINGLETON_LAUNCHER = load_clvm_maybe_recompile("singleton_launcher.clsp")
+SINGLETON_LAUNCHER = load_serialized_clvm_maybe_recompile("singleton_launcher.clsp")
 SINGLETON_LAUNCHER_HASH = SINGLETON_LAUNCHER.get_tree_hash()
 ESCAPE_VALUE = -113
 MELT_CONDITION = [ConditionOpcode.CREATE_COIN, 0, ESCAPE_VALUE]
@@ -193,7 +194,7 @@ def launch_conditions_and_coinsol(
         inner_puzzle,
     )
 
-    launcher_solution = Program.to(
+    launcher_solution = SerializedProgram.to(
         [
             curried_singleton.get_tree_hash(),
             amount,
@@ -327,8 +328,8 @@ def claim_p2_singleton(
         )
     claim_coinsol = CoinSpend(
         p2_singleton_coin,
-        puzzle,
-        solution_for_p2_singleton(p2_singleton_coin, singleton_inner_puzhash),
+        SerializedProgram.from_program(puzzle),
+        SerializedProgram.from_program(solution_for_p2_singleton(p2_singleton_coin, singleton_inner_puzhash)),
     )
     return assertion, announcement, claim_coinsol
 
@@ -343,7 +344,7 @@ def spend_to_delayed_puzzle(
 ) -> CoinSpend:
     claim_coinsol = CoinSpend(
         p2_singleton_coin,
-        pay_to_singleton_or_delay_puzzle(launcher_id, delay_time, delay_ph),
-        solution_for_p2_delayed_puzzle(output_amount),
+        SerializedProgram.from_program(pay_to_singleton_or_delay_puzzle(launcher_id, delay_time, delay_ph)),
+        SerializedProgram.from_program(solution_for_p2_delayed_puzzle(output_amount)),
     )
     return claim_coinsol

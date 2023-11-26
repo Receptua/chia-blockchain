@@ -25,6 +25,7 @@ from chia.simulator.simulator_protocol import FarmNewBlockProtocol
 from chia.types.announcement import Announcement
 from chia.types.blockchain_format.coin import Coin, coin_as_list
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_record import CoinRecord
 from chia.types.coin_spend import CoinSpend
@@ -2421,7 +2422,9 @@ async def test_cat_spend_run_tail(wallet_rpc_environment: WalletRpcTestEnvironme
 
     # Send to a CAT with an anyone can spend TAIL
     our_ph: bytes32 = await env.wallet_1.wallet.get_new_puzzlehash()
-    cat_puzzle: Program = construct_cat_puzzle(CAT_MOD, Program.to(None).get_tree_hash(), Program.to(1))
+    cat_puzzle = SerializedProgram.from_program(
+        construct_cat_puzzle(CAT_MOD, Program.to(None).get_tree_hash(), Program.to(1))
+    )
     addr = encode_puzzle_hash(
         cat_puzzle.get_tree_hash(),
         "txch",
@@ -2443,7 +2446,7 @@ async def test_cat_spend_run_tail(wallet_rpc_environment: WalletRpcTestEnvironme
             CoinSpend(
                 cat_coin,
                 cat_puzzle,
-                Program.to(
+                SerializedProgram.to(
                     [
                         Program.to([[51, our_ph, tx_amount, [our_ph]], [51, None, -113, None, None]]),
                         None,

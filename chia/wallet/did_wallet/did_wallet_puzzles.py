@@ -6,6 +6,7 @@ from chia_rs import G1Element
 
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.condition_opcodes import ConditionOpcode
@@ -141,9 +142,9 @@ def create_spend_for_message(
     :param pubkey: New wallet pubkey
     :return: CoinSpend
     """
-    puzzle = create_recovery_message_puzzle(recovering_coin, newpuz, pubkey)
+    puzzle = SerializedProgram.from_program(create_recovery_message_puzzle(recovering_coin, newpuz, pubkey))
     coin = Coin(parent_of_message, puzzle.get_tree_hash(), uint64(0))
-    solution = Program.to([])
+    solution = SerializedProgram.to([])
     coinsol = CoinSpend(coin, puzzle, solution)
     return coinsol
 

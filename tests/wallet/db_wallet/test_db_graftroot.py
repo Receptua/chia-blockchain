@@ -8,6 +8,7 @@ from chia_rs import G2Element
 from chia.clvm.spend_sim import CostLogger, sim_and_client
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.mempool_inclusion_status import MempoolInclusionStatus
@@ -79,7 +80,9 @@ async def test_graftroot(cost_logger: CostLogger) -> None:
                 simplify_merkle_proof(v, (proofs[v][0], [proofs[v][1][0]])): (proofs[v][0] >> 1, proofs[v][1][1:])
                 for v in filtered_values
             }
-            fake_puzzle: Program = ACS.curry(fake_struct, ACS.curry(ACS_PH, (root, None), NIL_PH, None))
+            fake_puzzle = SerializedProgram.from_program(
+                ACS.curry(fake_struct, ACS.curry(ACS_PH, (root, None), NIL_PH, None))
+            )
             await sim.farm_block(fake_puzzle.get_tree_hash())
             fake_coin: Coin = (await sim_client.get_coin_records_by_puzzle_hash(fake_puzzle.get_tree_hash()))[0].coin
 
@@ -87,7 +90,7 @@ async def test_graftroot(cost_logger: CostLogger) -> None:
             fake_spend = CoinSpend(
                 fake_coin,
                 fake_puzzle,
-                Program.to([[[62, "$"]]]),
+                SerializedProgram.to([[[62, "$"]]]),
             )
 
             proofs_of_inclusion = []
@@ -99,8 +102,8 @@ async def test_graftroot(cost_logger: CostLogger) -> None:
 
             graftroot_spend = CoinSpend(
                 graftroot_coin,
-                graftroot_puzzle,
-                Program.to(
+                SerializedProgram.from_program(graftroot_puzzle),
+                SerializedProgram.to(
                     [
                         # Again, everything twice
                         [proofs_of_inclusion] * 2,
@@ -131,8 +134,10 @@ async def test_graftroot(cost_logger: CostLogger) -> None:
                 # try with a bad merkle root announcement
                 new_fake_spend = CoinSpend(
                     fake_coin,
-                    ACS.curry(fake_struct, ACS.curry(ACS_PH, (bytes32([0] * 32), None), None, None)),
-                    Program.to([[[62, "$"]]]),
+                    SerializedProgram.from_program(
+                        ACS.curry(fake_struct, ACS.curry(ACS_PH, (bytes32([0] * 32), None), None, None))
+                    ),
+                    SerializedProgram.to([[[62, "$"]]]),
                 )
                 new_final_bundle = SpendBundle([new_fake_spend, graftroot_spend], G2Element())
                 result = await sim_client.push_tx(new_final_bundle)

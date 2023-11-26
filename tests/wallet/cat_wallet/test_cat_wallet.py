@@ -16,6 +16,7 @@ from chia.simulator.setup_nodes import SimulatorsAndWalletsServices
 from chia.simulator.simulator_protocol import FarmNewBlockProtocol, ReorgProtocol
 from chia.types.blockchain_format.coin import Coin, coin_as_list
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.peer_info import PeerInfo
@@ -960,10 +961,12 @@ class TestCATWallet:
         # Insert the derivation record before the wallet exists so that it is not subscribed to
         await wallet_node_0.wallet_state_manager.puzzle_store.add_derivation_paths([change_derivation])
         our_puzzle: Program = await wallet_0.get_new_puzzle()
-        cat_puzzle: Program = construct_cat_puzzle(
-            CAT_MOD,
-            Program.to(None).get_tree_hash(),
-            Program.to(1),
+        cat_puzzle = SerializedProgram.from_program(
+            construct_cat_puzzle(
+                CAT_MOD,
+                Program.to(None).get_tree_hash(),
+                Program.to(1),
+            )
         )
         addr = encode_puzzle_hash(cat_puzzle.get_tree_hash(), "txch")
         cat_amount_0 = uint64(100)
@@ -993,7 +996,7 @@ class TestCATWallet:
                 CoinSpend(
                     cat_coin,
                     cat_puzzle,
-                    Program.to(
+                    SerializedProgram.to(
                         [
                             Program.to(
                                 [
@@ -1017,12 +1020,14 @@ class TestCATWallet:
                 ),
                 CoinSpend(
                     next_coin,
-                    construct_cat_puzzle(
-                        CAT_MOD,
-                        Program.to(None).get_tree_hash(),
-                        our_puzzle,
+                    SerializedProgram.from_program(
+                        construct_cat_puzzle(
+                            CAT_MOD,
+                            Program.to(None).get_tree_hash(),
+                            our_puzzle,
+                        )
                     ),
-                    Program.to(
+                    SerializedProgram.to(
                         [
                             [
                                 None,

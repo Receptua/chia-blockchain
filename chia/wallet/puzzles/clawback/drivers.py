@@ -6,6 +6,7 @@ from typing import Any, List, Optional, Set, Union
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.condition_opcodes import ConditionOpcode
@@ -175,7 +176,9 @@ def generate_clawback_spend_bundle(
             f"recreate puzzle hash {puzzle.get_tree_hash().hex()}, actual puzzle hash {coin.puzzle_hash.hex()}"
         )
 
-    solution: Program = create_merkle_solution(
-        time_lock, metadata.sender_puzzle_hash, metadata.recipient_puzzle_hash, inner_puzzle, inner_solution
+    solution = SerializedProgram.from_program(
+        create_merkle_solution(
+            time_lock, metadata.sender_puzzle_hash, metadata.recipient_puzzle_hash, inner_puzzle, inner_solution
+        )
     )
-    return CoinSpend(coin, puzzle, solution)
+    return CoinSpend(coin, SerializedProgram.from_program(puzzle), solution)

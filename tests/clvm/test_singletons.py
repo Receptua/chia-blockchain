@@ -9,6 +9,7 @@ from chia.clvm.spend_sim import CostLogger, SimClient, SpendSim, sim_and_client
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.condition_opcodes import ConditionOpcode
@@ -126,8 +127,8 @@ async def test_singleton_top_layer(version, cost_logger):
 
         starting_coinsol = CoinSpend(
             starting_coin,
-            starting_puzzle,
-            full_solution,
+            SerializedProgram.from_program(starting_puzzle),
+            SerializedProgram.from_program(full_solution),
         )
 
         await make_and_spend_bundle(
@@ -175,8 +176,8 @@ async def test_singleton_top_layer(version, cost_logger):
 
         singleton_eve_coinsol = CoinSpend(
             singleton_eve,
-            puzzle_reveal,
-            full_solution,
+            SerializedProgram.from_program(puzzle_reveal),
+            SerializedProgram.from_program(full_solution),
         )
 
         await make_and_spend_bundle(
@@ -202,8 +203,8 @@ async def test_singleton_top_layer(version, cost_logger):
 
         singleton_coinsol = CoinSpend(
             singleton,
-            puzzle_reveal,
-            full_solution,
+            SerializedProgram.from_program(puzzle_reveal),
+            SerializedProgram.from_program(full_solution),
         )
 
         await make_and_spend_bundle(
@@ -251,8 +252,8 @@ async def test_singleton_top_layer(version, cost_logger):
         )
         singleton_claim_coinsol = CoinSpend(
             singleton_child,
-            puzzle_reveal,
-            full_solution,
+            SerializedProgram.from_program(puzzle_reveal),
+            SerializedProgram.from_program(full_solution),
         )
 
         await make_and_spend_bundle(
@@ -309,8 +310,8 @@ async def test_singleton_top_layer(version, cost_logger):
         )
         delay_claim_coinsol = CoinSpend(
             singleton_child,
-            puzzle_reveal,
-            full_solution,
+            SerializedProgram.from_program(puzzle_reveal),
+            SerializedProgram.from_program(full_solution),
         )
 
         # Save the height so we can rewind after this
@@ -366,8 +367,8 @@ async def test_singleton_top_layer(version, cost_logger):
 
         multi_odd_coinsol = CoinSpend(
             singleton_child,
-            puzzle_reveal,
-            full_solution,
+            SerializedProgram.from_program(puzzle_reveal),
+            SerializedProgram.from_program(full_solution),
         )
 
         await make_and_spend_bundle(
@@ -402,8 +403,8 @@ async def test_singleton_top_layer(version, cost_logger):
 
         no_odd_coinsol = CoinSpend(
             singleton_child,
-            puzzle_reveal,
-            full_solution,
+            SerializedProgram.from_program(puzzle_reveal),
+            SerializedProgram.from_program(full_solution),
         )
 
         await make_and_spend_bundle(
@@ -444,8 +445,8 @@ async def test_singleton_top_layer(version, cost_logger):
 
         singleton_even_coinsol = CoinSpend(
             singleton_child,
-            puzzle_reveal,
-            full_solution,
+            SerializedProgram.from_program(puzzle_reveal),
+            SerializedProgram.from_program(full_solution),
         )
 
         await make_and_spend_bundle(
@@ -484,8 +485,8 @@ async def test_singleton_top_layer(version, cost_logger):
 
         evil_coinsol = CoinSpend(
             evil_coin,
-            puzzle_reveal,
-            full_solution,
+            SerializedProgram.from_program(puzzle_reveal),
+            SerializedProgram.from_program(full_solution),
         )
 
         await make_and_spend_bundle(
@@ -522,8 +523,8 @@ async def test_singleton_top_layer(version, cost_logger):
 
         melt_coinsol = CoinSpend(
             singleton_child,
-            puzzle_reveal,
-            full_solution,
+            SerializedProgram.from_program(puzzle_reveal),
+            SerializedProgram.from_program(full_solution),
         )
 
         await make_and_spend_bundle(

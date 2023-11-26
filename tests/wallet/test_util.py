@@ -4,7 +4,7 @@ import pytest
 
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32, bytes48
 from chia.types.coin_spend import CoinSpend
 from chia.util.errors import ValidationError
@@ -26,27 +26,35 @@ def test_compute_spend_hints_and_additions() -> None:
     create_coin_args = [coin_creation_args(create_coin) for create_coin in hinted_coins]
     coin_spend = CoinSpend(
         parent_coin.coin,
-        Program.to(1),
-        Program.to(create_coin_args),
+        SerializedProgram.to(1),
+        SerializedProgram.to(create_coin_args),
     )
     expected_dict = {hinted_coin.coin.name(): hinted_coin for hinted_coin in hinted_coins}
     assert compute_spend_hints_and_additions(coin_spend)[0] == expected_dict
 
     not_hinted_coin = HintedCoin(Coin(parent_coin.coin.name(), bytes32([0] * 32), uint64(0)), None)
     assert compute_spend_hints_and_additions(
-        CoinSpend(parent_coin.coin, Program.to(1), Program.to([[51, bytes32([0] * 32), 0, [["not", "a"], "hint"]]]))
+        CoinSpend(
+            parent_coin.coin,
+            SerializedProgram.to(1),
+            SerializedProgram.to([[51, bytes32([0] * 32), 0, [["not", "a"], "hint"]]]),
+        )
     )[0] == {not_hinted_coin.coin.name(): not_hinted_coin}
 
     with pytest.raises(ValidationError):
         compute_spend_hints_and_additions(
             CoinSpend(
-                parent_coin.coin, Program.to(1), Program.to([[51, bytes32([0] * 32), 0] for _ in range(0, 10000)])
+                parent_coin.coin,
+                SerializedProgram.to(1),
+                SerializedProgram.to([[51, bytes32([0] * 32), 0] for _ in range(0, 10000)]),
             )
         )
     with pytest.raises(ValidationError):
         compute_spend_hints_and_additions(
             CoinSpend(
-                parent_coin.coin, Program.to(1), Program.to([[50, bytes48([0] * 48), b""] for _ in range(0, 10000)])
+                parent_coin.coin,
+                SerializedProgram.to(1),
+                SerializedProgram.to([[50, bytes48([0] * 48), b""] for _ in range(0, 10000)]),
             )
         )
 

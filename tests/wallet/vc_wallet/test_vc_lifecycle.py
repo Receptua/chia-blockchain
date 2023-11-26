@@ -9,6 +9,7 @@ from chia_rs import G2Element
 from chia.clvm.spend_sim import CostLogger, sim_and_client
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.mempool_inclusion_status import MempoolInclusionStatus
@@ -49,9 +50,11 @@ MOCK_SINGLETON_MOD: Program = Program.to([2, 5, 11])
 MOCK_SINGLETON_MOD_HASH: bytes32 = MOCK_SINGLETON_MOD.get_tree_hash()
 MOCK_LAUNCHER_ID: bytes32 = bytes32([0] * 32)
 MOCK_LAUNCHER_HASH: bytes32 = bytes32([1] * 32)
-MOCK_SINGLETON: Program = MOCK_SINGLETON_MOD.curry(
-    (MOCK_SINGLETON_MOD_HASH, (MOCK_LAUNCHER_ID, MOCK_LAUNCHER_HASH)),
-    ACS,
+MOCK_SINGLETON = SerializedProgram.from_program(
+    MOCK_SINGLETON_MOD.curry(
+        (MOCK_SINGLETON_MOD_HASH, (MOCK_LAUNCHER_ID, MOCK_LAUNCHER_HASH)),
+        ACS,
+    )
 )
 
 
@@ -59,7 +62,7 @@ MOCK_SINGLETON: Program = MOCK_SINGLETON_MOD.curry(
 async def test_covenant_layer(cost_logger: CostLogger) -> None:
     async with sim_and_client() as (sim, client):
         # Create a puzzle that will not pass the initial covenant check
-        FAKE_ACS: Program = Program.to([3, (1, "fake"), 1, None])
+        FAKE_ACS = SerializedProgram.to([3, (1, "fake"), 1, None])
         # The output puzzle will be the same for both
         covenant_puzzle: Program = create_covenant_layer(ACS_PH, create_std_parent_morpher(ACS_PH), ACS)
         assert match_covenant_layer(uncurry_puzzle(covenant_puzzle)) == (ACS_PH, create_std_parent_morpher(ACS_PH), ACS)
@@ -82,12 +85,12 @@ async def test_covenant_layer(cost_logger: CostLogger) -> None:
                         CoinSpend(
                             fake_acs_coin,
                             FAKE_ACS,
-                            Program.to([[51, covenant_puzzle_hash, fake_acs_coin.amount]]),
+                            SerializedProgram.to([[51, covenant_puzzle_hash, fake_acs_coin.amount]]),
                         ),
                         CoinSpend(
                             acs_coin,
-                            ACS,
-                            Program.to([[51, covenant_puzzle_hash, acs_coin.amount]]),
+                            SerializedProgram.from_program(ACS),
+                            SerializedProgram.to([[51, covenant_puzzle_hash, acs_coin.amount]]),
                         ),
                     ],
                     G2Element(),
@@ -110,15 +113,17 @@ async def test_covenant_layer(cost_logger: CostLogger) -> None:
                 [
                     CoinSpend(
                         acs_cov,
-                        covenant_puzzle,
-                        solve_covenant_layer(
-                            LineageProof(
-                                parent_name=acs_coin.parent_coin_info,
-                                inner_puzzle_hash=ACS_PH,
-                                amount=uint64(acs_coin.amount),
-                            ),
-                            Program.to(None),
-                            Program.to([[51, covenant_puzzle_hash, acs_coin.amount]]),
+                        SerializedProgram.from_program(covenant_puzzle),
+                        SerializedProgram.from_program(
+                            solve_covenant_layer(
+                                LineageProof(
+                                    parent_name=acs_coin.parent_coin_info,
+                                    inner_puzzle_hash=ACS_PH,
+                                    amount=uint64(acs_coin.amount),
+                                ),
+                                Program.to(None),
+                                Program.to([[51, covenant_puzzle_hash, acs_coin.amount]]),
+                            )
                         ),
                     ),
                 ],
@@ -136,11 +141,13 @@ async def test_covenant_layer(cost_logger: CostLogger) -> None:
                         [
                             CoinSpend(
                                 cov,
-                                covenant_puzzle,
-                                solve_covenant_layer(
-                                    LineageProof(parent_name=parent.parent_coin_info, amount=uint64(parent.amount)),
-                                    Program.to(None),
-                                    Program.to([[51, covenant_puzzle_hash, cov.amount]]),
+                                SerializedProgram.from_program(covenant_puzzle),
+                                SerializedProgram.from_program(
+                                    solve_covenant_layer(
+                                        LineageProof(parent_name=parent.parent_coin_info, amount=uint64(parent.amount)),
+                                        Program.to(None),
+                                        Program.to([[51, covenant_puzzle_hash, cov.amount]]),
+                                    )
                                 ),
                             ),
                         ],
@@ -166,15 +173,17 @@ async def test_covenant_layer(cost_logger: CostLogger) -> None:
                     [
                         CoinSpend(
                             new_acs_cov,
-                            covenant_puzzle,
-                            solve_covenant_layer(
-                                LineageProof(
-                                    parent_name=acs_cov.parent_coin_info,
-                                    inner_puzzle_hash=ACS_PH,
-                                    amount=uint64(acs_cov.amount),
-                                ),
-                                Program.to(None),
-                                Program.to([[51, covenant_puzzle_hash, new_acs_cov.amount]]),
+                            SerializedProgram.from_program(covenant_puzzle),
+                            SerializedProgram.from_program(
+                                solve_covenant_layer(
+                                    LineageProof(
+                                        parent_name=acs_cov.parent_coin_info,
+                                        inner_puzzle_hash=ACS_PH,
+                                        amount=uint64(acs_cov.amount),
+                                    ),
+                                    Program.to(None),
+                                    Program.to([[51, covenant_puzzle_hash, new_acs_cov.amount]]),
+                                )
                             ),
                         ),
                     ],
@@ -198,7 +207,9 @@ async def test_did_tp(cost_logger: CostLogger) -> None:
         # Create it with mock singleton info
         transfer_program: Program = create_did_tp(MOCK_SINGLETON_MOD_HASH, MOCK_LAUNCHER_HASH)
         assert match_did_tp(uncurry_puzzle(transfer_program)) == ()
-        eml_puzzle: Program = MOCK_OWNERSHIP_LAYER.curry((MOCK_LAUNCHER_ID, None), transfer_program)
+        eml_puzzle = SerializedProgram.from_program(
+            MOCK_OWNERSHIP_LAYER.curry((MOCK_LAUNCHER_ID, None), transfer_program)
+        )
 
         await sim.farm_block(eml_puzzle.get_tree_hash())
         eml_coin: Coin = (
@@ -219,7 +230,7 @@ async def test_did_tp(cost_logger: CostLogger) -> None:
                     CoinSpend(
                         eml_coin,
                         eml_puzzle,
-                        Program.to(
+                        SerializedProgram.to(
                             [
                                 solve_did_tp(
                                     bad_data,
@@ -244,7 +255,7 @@ async def test_did_tp(cost_logger: CostLogger) -> None:
         did_authorization_spend: CoinSpend = CoinSpend(
             did_coin,
             MOCK_SINGLETON,
-            Program.to([[[62, std_hash(my_coin_id + new_metadata.get_tree_hash() + new_tp_hash)]]]),
+            SerializedProgram.to([[[62, std_hash(my_coin_id + new_metadata.get_tree_hash() + new_tp_hash)]]]),
         )
 
         # Try to pass the wrong coin id
@@ -254,7 +265,7 @@ async def test_did_tp(cost_logger: CostLogger) -> None:
                     CoinSpend(
                         eml_coin,
                         eml_puzzle,
-                        Program.to(
+                        SerializedProgram.to(
                             [
                                 solve_did_tp(
                                     provider_innerpuzhash,
@@ -280,7 +291,7 @@ async def test_did_tp(cost_logger: CostLogger) -> None:
                     CoinSpend(
                         eml_coin,
                         eml_puzzle,
-                        Program.to(
+                        SerializedProgram.to(
                             [
                                 solve_did_tp(
                                     provider_innerpuzhash,
@@ -332,11 +343,13 @@ async def test_viral_backdoor(cost_logger: CostLogger) -> None:
                 [
                     CoinSpend(
                         p2_either_coin,
-                        p2_either_puzzle,
-                        solve_viral_backdoor(
-                            ACS,
-                            Program.to(None),
-                            hidden=True,
+                        SerializedProgram.from_program(p2_either_puzzle),
+                        SerializedProgram.from_program(
+                            solve_viral_backdoor(
+                                ACS,
+                                Program.to(None),
+                                hidden=True,
+                            )
                         ),
                     )
                 ],
@@ -351,11 +364,13 @@ async def test_viral_backdoor(cost_logger: CostLogger) -> None:
                 [
                     CoinSpend(
                         p2_either_coin,
-                        p2_either_puzzle,
-                        solve_viral_backdoor(
-                            hidden_puzzle,
-                            Program.to(bytes32([0] * 32)),
-                            hidden=True,
+                        SerializedProgram.from_program(p2_either_puzzle),
+                        SerializedProgram.from_program(
+                            solve_viral_backdoor(
+                                hidden_puzzle,
+                                Program.to(bytes32([0] * 32)),
+                                hidden=True,
+                            )
                         ),
                     )
                 ],
@@ -377,10 +392,12 @@ async def test_viral_backdoor(cost_logger: CostLogger) -> None:
                     [
                         CoinSpend(
                             p2_either_coin,
-                            p2_either_puzzle,
-                            solve_viral_backdoor(
-                                ACS,
-                                Program.to([[51, brick_hash, 0]]),
+                            SerializedProgram.from_program(p2_either_puzzle),
+                            SerializedProgram.from_program(
+                                solve_viral_backdoor(
+                                    ACS,
+                                    Program.to([[51, brick_hash, 0]]),
+                                )
                             ),
                         )
                     ],
@@ -403,9 +420,11 @@ async def test_proofs_checker(cost_logger: CostLogger, num_proofs: int) -> None:
         proofs_checker: ProofsChecker = ProofsChecker(flags)
 
         # (mod (PROOFS_CHECKER proofs) (if (a PROOFS_CHECKER (list proofs)) () (x)))
-        proofs_checker_runner: Program = Program.fromhex(
-            "ff02ffff03ffff02ff02ffff04ff05ff808080ff80ffff01ff088080ff0180"
-        ).curry(proofs_checker.as_program())
+        proofs_checker_runner = SerializedProgram.from_program(
+            Program.fromhex("ff02ffff03ffff02ff02ffff04ff05ff808080ff80ffff01ff088080ff0180").curry(
+                proofs_checker.as_program()
+            )
+        )
         await sim.farm_block(proofs_checker_runner.get_tree_hash())
         proof_checker_coin: Coin = (
             await client.get_coin_records_by_puzzle_hashes(
@@ -423,7 +442,7 @@ async def test_proofs_checker(cost_logger: CostLogger, num_proofs: int) -> None:
                             CoinSpend(
                                 proof_checker_coin,
                                 proofs_checker_runner,
-                                Program.to([[Program.to((flag, "1")) for flag in proof_list]]),
+                                SerializedProgram.to([[Program.to((flag, "1")) for flag in proof_list]]),
                             )
                         ],
                         G2Element(),
@@ -439,7 +458,7 @@ async def test_proofs_checker(cost_logger: CostLogger, num_proofs: int) -> None:
 @pytest.mark.parametrize("test_syncing", [True, False])
 async def test_vc_lifecycle(test_syncing: bool, cost_logger: CostLogger) -> None:
     async with sim_and_client() as (sim, client):
-        RUN_PUZ_PUZ: Program = Program.to([2, 1, None])  # (a 1 ()) takes a puzzle as its solution and runs it with ()
+        RUN_PUZ_PUZ = SerializedProgram.to([2, 1, None])  # (a 1 ()) takes a puzzle as its solution and runs it with ()
         RUN_PUZ_PUZ_PH: bytes32 = RUN_PUZ_PUZ.get_tree_hash()
         await sim.farm_block(RUN_PUZ_PUZ_PH)
         await sim.farm_block(RUN_PUZ_PUZ_PH)
@@ -473,7 +492,7 @@ async def test_vc_lifecycle(test_syncing: bool, cost_logger: CostLogger) -> None
                         CoinSpend(
                             fund_coin,
                             RUN_PUZ_PUZ,
-                            Program.to((1, conditions)),
+                            SerializedProgram.to((1, conditions)),
                         ),
                         launcher_spend,
                     ],
@@ -514,7 +533,7 @@ async def test_vc_lifecycle(test_syncing: bool, cost_logger: CostLogger) -> None
                         CoinSpend(
                             vc_fund_coin,
                             RUN_PUZ_PUZ,
-                            dpuz,
+                            SerializedProgram.from_program(dpuz),
                         ),
                         *coin_spends,
                     ],
@@ -549,19 +568,23 @@ async def test_vc_lifecycle(test_syncing: bool, cost_logger: CostLogger) -> None
                                 [
                                     CoinSpend(
                                         did if correct_did else other_did,
-                                        puzzle_for_singleton(
-                                            launcher_id if correct_did else other_launcher_id,
-                                            ACS,
+                                        SerializedProgram.from_program(
+                                            puzzle_for_singleton(
+                                                launcher_id if correct_did else other_launcher_id,
+                                                ACS,
+                                            )
                                         ),
-                                        solution_for_singleton(
-                                            lineage_proof if correct_did else other_lineage_proof,
-                                            uint64(did.amount) if correct_did else uint64(other_did.amount),
-                                            Program.to(
-                                                [
-                                                    [51, ACS_PH, did.amount if correct_did else other_did.amount],
-                                                    [62, expected_announcement],
-                                                ]
-                                            ),
+                                        SerializedProgram.from_program(
+                                            solution_for_singleton(
+                                                lineage_proof if correct_did else other_lineage_proof,
+                                                uint64(did.amount) if correct_did else uint64(other_did.amount),
+                                                Program.to(
+                                                    [
+                                                        [51, ACS_PH, did.amount if correct_did else other_did.amount],
+                                                        [62, expected_announcement],
+                                                    ]
+                                                ),
+                                            )
                                         ),
                                     )
                                 ]
@@ -634,12 +657,12 @@ async def test_vc_lifecycle(test_syncing: bool, cost_logger: CostLogger) -> None
                         CoinSpend(
                             cr_coin_1,
                             RUN_PUZ_PUZ,
-                            dpuz_1,
+                            SerializedProgram.from_program(dpuz_1),
                         ),
                         CoinSpend(
                             cr_coin_2,
                             RUN_PUZ_PUZ,
-                            dpuz_2,
+                            SerializedProgram.from_program(dpuz_2),
                         ),
                         launch_crcat_spend_1,
                         launch_crcat_spend_2,
@@ -773,20 +796,24 @@ async def test_vc_lifecycle(test_syncing: bool, cost_logger: CostLogger) -> None
                         [
                             CoinSpend(
                                 new_did,
-                                puzzle_for_singleton(
-                                    launcher_id if correct_did else other_launcher_id,
-                                    ACS,
-                                ),
-                                solution_for_singleton(
-                                    LineageProof(
-                                        parent_name=did.parent_coin_info,
-                                        inner_puzzle_hash=ACS_PH,
-                                        amount=uint64(did.amount),
+                                SerializedProgram.from_program(
+                                    puzzle_for_singleton(
+                                        launcher_id if correct_did else other_launcher_id,
+                                        ACS,
                                     )
-                                    if correct_did
-                                    else other_lineage_proof,
-                                    uint64(new_did.amount),
-                                    Program.to([[51, ACS_PH, new_did.amount], [62, expected_announcement]]),
+                                ),
+                                SerializedProgram.from_program(
+                                    solution_for_singleton(
+                                        LineageProof(
+                                            parent_name=did.parent_coin_info,
+                                            inner_puzzle_hash=ACS_PH,
+                                            amount=uint64(did.amount),
+                                        )
+                                        if correct_did
+                                        else other_lineage_proof,
+                                        uint64(new_did.amount),
+                                        Program.to([[51, ACS_PH, new_did.amount], [62, expected_announcement]]),
+                                    )
                                 ),
                             ),
                             yoink_spend,

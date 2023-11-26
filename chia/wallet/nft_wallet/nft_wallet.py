@@ -17,6 +17,7 @@ from chia.server.ws_connection import WSChiaConnection
 from chia.types.announcement import Announcement
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend, compute_additions
 from chia.types.signing_mode import CHIP_0002_SIGN_MESSAGE_PREFIX, SigningMode
@@ -347,7 +348,7 @@ class NFTWallet:
         if coins is None:
             return None
         origin = coins.copy().pop()
-        genesis_launcher_puz = nft_puzzles.LAUNCHER_PUZZLE
+        genesis_launcher_puz = SerializedProgram.from_program(nft_puzzles.LAUNCHER_PUZZLE)
         # nft_id == singleton_id == launcher_id == launcher_coin.name()
         launcher_coin = Coin(origin.name(), nft_puzzles.LAUNCHER_PUZZLE_HASH, uint64(amount))
         self.log.debug("Generating NFT with launcher coin %s and metadata: %s", launcher_coin, metadata)
@@ -395,7 +396,7 @@ class NFTWallet:
             origin_id=origin.name(),
             extra_conditions=extra_conditions,
         )
-        genesis_launcher_solution = Program.to([eve_fullpuz_hash, amount, []])
+        genesis_launcher_solution = SerializedProgram.to([eve_fullpuz_hash, amount, []])
 
         # launcher spend to generate the singleton
         launcher_cs = CoinSpend(launcher_coin, genesis_launcher_puz, genesis_launcher_solution)
@@ -779,8 +780,10 @@ class NFTWallet:
 
         nft_layer_solution = Program.to([innersol])
         assert isinstance(nft_coin.lineage_proof, LineageProof)
-        singleton_solution = Program.to([nft_coin.lineage_proof.to_program(), nft_coin.coin.amount, nft_layer_solution])
-        coin_spend = CoinSpend(nft_coin.coin, nft_coin.full_puzzle, singleton_solution)
+        singleton_solution = SerializedProgram.to(
+            [nft_coin.lineage_proof.to_program(), nft_coin.coin.amount, nft_layer_solution]
+        )
+        coin_spend = CoinSpend(nft_coin.coin, SerializedProgram.from_program(nft_coin.full_puzzle), singleton_solution)
 
         nft_spend_bundle = SpendBundle([coin_spend], G2Element())
 
@@ -1088,7 +1091,11 @@ class NFTWallet:
                             )
                             royalty_sol = solve_puzzle(driver_dict[asset], solver, OFFER_MOD, inner_royalty_sol)
 
-                        new_coin_spend = CoinSpend(royalty_coin, offer_puzzle, royalty_sol)
+                        new_coin_spend = CoinSpend(
+                            royalty_coin,
+                            SerializedProgram.from_program(offer_puzzle),
+                            SerializedProgram.from_program(royalty_sol),
+                        )
                         additional_bundles.append(SpendBundle([new_coin_spend], G2Element()))
 
                         if duplicate_payments != []:
@@ -1353,12 +1360,14 @@ class NFTWallet:
         # Loop to create each intermediate coin, launcher, eve and (optional) transfer spends
         for mint_number in range(mint_number_start, mint_number_end):
             # Create  the puzzle, solution and coin spend for the intermediate launcher
-            intermediate_launcher_puz = did_wallet_puzzles.INTERMEDIATE_LAUNCHER_MOD.curry(
-                chia.wallet.singleton.SINGLETON_LAUNCHER_PUZZLE_HASH, mint_number, mint_total
+            intermediate_launcher_puz = SerializedProgram.from_program(
+                did_wallet_puzzles.INTERMEDIATE_LAUNCHER_MOD.curry(
+                    chia.wallet.singleton.SINGLETON_LAUNCHER_PUZZLE_HASH, mint_number, mint_total
+                )
             )
             intermediate_launcher_ph = intermediate_launcher_puz.get_tree_hash()
             primaries.append(Payment(intermediate_launcher_ph, uint64(0), [intermediate_launcher_ph]))
-            intermediate_launcher_sol = Program.to([])
+            intermediate_launcher_sol = SerializedProgram.to([])
             intermediate_launcher_coin = Coin(did_coin.name(), intermediate_launcher_ph, uint64(0))
             intermediate_launcher_coin_spend = CoinSpend(
                 intermediate_launcher_coin, intermediate_launcher_puz, intermediate_launcher_sol
@@ -1397,10 +1406,12 @@ class NFTWallet:
             announcement_message = Program.to([eve_fullpuz.get_tree_hash(), amount, []]).get_tree_hash()
             did_announcements.add(std_hash(launcher_coin.name() + announcement_message))
 
-            genesis_launcher_solution = Program.to([eve_fullpuz.get_tree_hash(), amount, []])
+            genesis_launcher_solution = SerializedProgram.to([eve_fullpuz.get_tree_hash(), amount, []])
 
             launcher_cs = CoinSpend(
-                launcher_coin, chia.wallet.singleton.SINGLETON_LAUNCHER_PUZZLE, genesis_launcher_solution
+                launcher_coin,
+                SerializedProgram.from_program(chia.wallet.singleton.SINGLETON_LAUNCHER_PUZZLE),
+                genesis_launcher_solution,
             )
             launcher_spends.append(launcher_cs)
 
@@ -1482,7 +1493,9 @@ class NFTWallet:
                 solution = self.standard_wallet.make_solution(
                     primaries=[], coin_announcements_to_assert={primary_announcement_hash}
                 )
-            xch_spends.append(CoinSpend(xch_coin, puzzle, solution))
+            xch_spends.append(
+                CoinSpend(xch_coin, SerializedProgram.from_program(puzzle), SerializedProgram.from_program(solution))
+            )
         xch_spend = await self.wallet_state_manager.sign_transaction(xch_spends)
 
         # Create the DID spend using the announcements collected when making the intermediate launcher coins
@@ -1494,9 +1507,11 @@ class NFTWallet:
             conditions=extra_conditions,
         )
         did_inner_sol: Program = Program.to([1, did_p2_solution])
-        did_full_puzzle: Program = chia.wallet.singleton.create_singleton_puzzle(
-            innerpuz,
-            did_wallet.did_info.origin_coin.name(),
+        did_full_puzzle = SerializedProgram.from_program(
+            chia.wallet.singleton.create_singleton_puzzle(
+                innerpuz,
+                did_wallet.did_info.origin_coin.name(),
+            )
         )
         # The DID lineage parent won't not exist if we're bulk minting from a future DID coin
         if did_lineage_parent:
@@ -1509,7 +1524,7 @@ class NFTWallet:
             did_parent_info = did_wallet.get_parent_for_coin(did_coin)
         assert did_parent_info is not None
 
-        did_full_sol = Program.to(
+        did_full_sol = SerializedProgram.to(
             [
                 [
                     did_parent_info.parent_name,
@@ -1599,12 +1614,12 @@ class NFTWallet:
         # Loop to create each intermediate coin, launcher, eve and (optional) transfer spends
         for mint_number in range(mint_number_start, mint_number_end):
             # Create  the puzzle, solution and coin spend for the intermediate launcher
-            intermediate_launcher_puz = nft_puzzles.INTERMEDIATE_LAUNCHER_MOD.curry(
-                nft_puzzles.LAUNCHER_PUZZLE_HASH, mint_number, mint_total
+            intermediate_launcher_puz = SerializedProgram.from_program(
+                nft_puzzles.INTERMEDIATE_LAUNCHER_MOD.curry(nft_puzzles.LAUNCHER_PUZZLE_HASH, mint_number, mint_total)
             )
             intermediate_launcher_ph = intermediate_launcher_puz.get_tree_hash()
             primaries.append(Payment(intermediate_launcher_ph, uint64(1), [intermediate_launcher_ph]))
-            intermediate_launcher_sol = Program.to([])
+            intermediate_launcher_sol = SerializedProgram.to([])
             intermediate_launcher_coin = Coin(funding_coin.name(), intermediate_launcher_ph, uint64(1))
             intermediate_launcher_coin_spend = CoinSpend(
                 intermediate_launcher_coin, intermediate_launcher_puz, intermediate_launcher_sol
@@ -1642,9 +1657,11 @@ class NFTWallet:
             announcement_message = Program.to([eve_fullpuz.get_tree_hash(), amount, []]).get_tree_hash()
             coin_announcements.add(std_hash(launcher_coin.name() + announcement_message))
 
-            genesis_launcher_solution = Program.to([eve_fullpuz.get_tree_hash(), amount, []])
+            genesis_launcher_solution = SerializedProgram.to([eve_fullpuz.get_tree_hash(), amount, []])
 
-            launcher_cs = CoinSpend(launcher_coin, nft_puzzles.LAUNCHER_PUZZLE, genesis_launcher_solution)
+            launcher_cs = CoinSpend(
+                launcher_coin, SerializedProgram.from_program(nft_puzzles.LAUNCHER_PUZZLE), genesis_launcher_solution
+            )
             launcher_spends.append(launcher_cs)
 
             eve_coin = Coin(launcher_coin.name(), eve_fullpuz.get_tree_hash(), uint64(amount))
@@ -1723,7 +1740,9 @@ class NFTWallet:
                 solution = self.standard_wallet.make_solution(
                     primaries=[], coin_announcements_to_assert={primary_announcement_hash}
                 )
-            xch_spends.append(CoinSpend(xch_coin, puzzle, solution))
+            xch_spends.append(
+                CoinSpend(xch_coin, SerializedProgram.from_program(puzzle), SerializedProgram.from_program(solution))
+            )
         xch_spend = await self.wallet_state_manager.sign_transaction(xch_spends)
 
         # Collect up all the coin spends and sign them

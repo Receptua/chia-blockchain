@@ -10,6 +10,7 @@ from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.types.announcement import Announcement
 from chia.types.blockchain_format.coin import Coin, coin_as_list
 from chia.types.blockchain_format.program import INFINITE_COST, Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.spend_bundle import SpendBundle
@@ -532,32 +533,36 @@ class Offer:
                     sibling_puzzles += ")"
                     sibling_solutions += ")"
 
-                    solution: Program = solve_puzzle(
-                        self.driver_dict[asset_id],
-                        Solver(
-                            {
-                                "coin": "0x"
-                                + coin.parent_coin_info.hex()
-                                + coin.puzzle_hash.hex()
-                                + uint64(coin.amount).stream_to_bytes().hex(),
-                                "parent_spend": "0x" + bytes(coin_to_spend_dict[coin]).hex(),
-                                "siblings": siblings,
-                                "sibling_spends": sibling_spends,
-                                "sibling_puzzles": sibling_puzzles,
-                                "sibling_solutions": sibling_solutions,
-                                **solver.info,
-                            }
-                        ),
-                        OFFER_MOD,
-                        Program.to(coin_to_solution_dict[coin]),
+                    solution = SerializedProgram.from_program(
+                        solve_puzzle(
+                            self.driver_dict[asset_id],
+                            Solver(
+                                {
+                                    "coin": "0x"
+                                    + coin.parent_coin_info.hex()
+                                    + coin.puzzle_hash.hex()
+                                    + uint64(coin.amount).stream_to_bytes().hex(),
+                                    "parent_spend": "0x" + bytes(coin_to_spend_dict[coin]).hex(),
+                                    "siblings": siblings,
+                                    "sibling_spends": sibling_spends,
+                                    "sibling_puzzles": sibling_puzzles,
+                                    "sibling_solutions": sibling_solutions,
+                                    **solver.info,
+                                }
+                            ),
+                            OFFER_MOD,
+                            Program.to(coin_to_solution_dict[coin]),
+                        )
                     )
                 else:
-                    solution = Program.to(coin_to_solution_dict[coin])
+                    solution = SerializedProgram.to(coin_to_solution_dict[coin])
 
                 completion_spends.append(
                     CoinSpend(
                         coin,
-                        construct_puzzle(self.driver_dict[asset_id], OFFER_MOD) if asset_id else OFFER_MOD,
+                        SerializedProgram.from_program(
+                            construct_puzzle(self.driver_dict[asset_id], OFFER_MOD) if asset_id else OFFER_MOD
+                        ),
                         solution,
                     )
                 )
@@ -587,8 +592,8 @@ class Offer:
                         puzzle_reveal.get_tree_hash(),
                         uint64(0),
                     ),
-                    puzzle_reveal,
-                    Program.to(inner_solutions),
+                    SerializedProgram.from_program(puzzle_reveal),
+                    SerializedProgram.to(inner_solutions),
                 )
             )
 

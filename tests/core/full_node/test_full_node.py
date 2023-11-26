@@ -343,8 +343,8 @@ class TestFullNodeBlockCompression:
             [
                 CoinSpend(
                     next(coin for coin in tr.additions if coin.puzzle_hash == Program.to(1).get_tree_hash()),
-                    Program.to(1),
-                    Program.to([[51, ph, 30000]]),
+                    SerializedProgram.to(1),
+                    SerializedProgram.to([[51, ph, 30000]]),
                 )
             ],
             G2Element(),
@@ -389,8 +389,8 @@ class TestFullNodeBlockCompression:
             [
                 CoinSpend(
                     next(coin for coin in tr.additions if coin.puzzle_hash == Program.to(1).get_tree_hash()),
-                    Program.to(1),
-                    Program.to([[51, ph, 30000]]),
+                    SerializedProgram.to(1),
+                    SerializedProgram.to([[51, ph, 30000]]),
                 )
             ],
             G2Element(),

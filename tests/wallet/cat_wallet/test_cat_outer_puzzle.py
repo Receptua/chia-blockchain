@@ -38,7 +38,7 @@ def test_cat_outer_puzzle() -> None:
     # Set up for solve
     parent_coin = Coin(tail, double_cat_puzzle.get_tree_hash(), uint64(100))
     child_coin = Coin(parent_coin.name(), double_cat_puzzle.get_tree_hash(), uint64(100))
-    parent_spend = CoinSpend(parent_coin, SerializedProgram.from_program(double_cat_puzzle), Program.to([]))
+    parent_spend = CoinSpend(parent_coin, SerializedProgram.from_program(double_cat_puzzle), SerializedProgram.to([]))
     child_coin_as_hex: str = (
         "0x"
         + child_coin.parent_coin_info.hex()

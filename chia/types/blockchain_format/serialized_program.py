@@ -37,6 +37,7 @@ class SerializedProgram:
     _buf: bytes
 
     def __init__(self, buf: bytes) -> None:
+        assert isinstance(buf, bytes)
         self._buf = buf
 
     @staticmethod

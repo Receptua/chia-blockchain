@@ -6,6 +6,7 @@ from chia_rs import AugSchemeMPL, G1Element, G2Element
 
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.spend_bundle import SpendBundle
@@ -72,7 +73,9 @@ def do_test_spend(
     coin = coin_db.farm_coin(puzzle_hash, farm_time)
 
     # spend it
-    coin_spend = CoinSpend(coin, puzzle_reveal, solution)
+    coin_spend = CoinSpend(
+        coin, SerializedProgram.from_program(puzzle_reveal), SerializedProgram.from_program(solution)
+    )
 
     spend_bundle = SpendBundle([coin_spend], G2Element())
     coin_db.update_coin_store_for_spend_bundle(spend_bundle, spend_time, MAX_BLOCK_COST_CLVM)

@@ -9,7 +9,7 @@ from chia_rs import G2Element
 from chia.protocols.wallet_protocol import CoinState
 from chia.types.announcement import Announcement
 from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.spend_bundle import SpendBundle
@@ -96,13 +96,13 @@ class NotificationManager:
             uint64(amount + fee), tx_config.coin_selection_config
         )
         origin_coin: bytes32 = next(iter(coins)).name()
-        notification_puzzle: Program = construct_notification(target, amount)
+        notification_puzzle = SerializedProgram.from_program(construct_notification(target, amount))
         notification_hash: bytes32 = notification_puzzle.get_tree_hash()
         notification_coin: Coin = Coin(origin_coin, notification_hash, amount)
         notification_spend = CoinSpend(
             notification_coin,
             notification_puzzle,
-            Program.to(None),
+            SerializedProgram.to(None),
         )
         extra_spend_bundle = SpendBundle([notification_spend], G2Element())
         [chia_tx] = await self.wallet_state_manager.main_wallet.generate_signed_transaction(

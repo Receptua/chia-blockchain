@@ -11,16 +11,14 @@ from chia.clvm.spend_sim import SimClient, SpendSim, sim_and_client
 from chia.consensus.constants import ConsensusConstants
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.full_node.bitcoin_fee_estimator import BitcoinFeeEstimator
-from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.spend_bundle import SpendBundle
 
 log = logging.getLogger(__name__)
 
-the_puzzle_hash = bytes32(
-    bytes.fromhex("9dcf97a184f32623d11a73124ceb99a5709b083721e878a16d78f596718ba7b2")
-)  # Program.to(1)
+the_puzzle_hash = bytes32(bytes.fromhex("9dcf97a184f32623d11a73124ceb99a5709b083721e878a16d78f596718ba7b2"))
 
 NEW_DEFAULT_CONSTANTS: ConsensusConstants = dataclasses.replace(
     DEFAULT_CONSTANTS,
@@ -43,8 +41,8 @@ async def farm(
 def make_tx_sb(from_coin: Coin) -> SpendBundle:
     coin_spend = CoinSpend(
         from_coin,
-        Program.to(1),
-        Program.to([[51, from_coin.puzzle_hash, from_coin.amount]]),
+        SerializedProgram.to(1),
+        SerializedProgram.to([[51, from_coin.puzzle_hash, from_coin.amount]]),
     )
     spend_bundle = SpendBundle([coin_spend], G2Element())
     return spend_bundle

@@ -9,6 +9,7 @@ from clvm_tools import binutils
 from chia.types.announcement import Announcement
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import INFINITE_COST, Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.condition_opcodes import ConditionOpcode
@@ -67,8 +68,8 @@ def launcher_conditions_and_spend_bundle(
             binutils.assemble(f"(0x{ConditionOpcode.CREATE_COIN.hex()} 0x{launcher_puzzle_hash} {launcher_amount})")
         )
     )
-    launcher_solution = Program.to([singleton_full_puzzle_hash, launcher_amount, metadata])
-    coin_spend = CoinSpend(launcher_coin, launcher_puzzle, launcher_solution)
+    launcher_solution = SerializedProgram.to([singleton_full_puzzle_hash, launcher_amount, metadata])
+    coin_spend = CoinSpend(launcher_coin, SerializedProgram.from_program(launcher_puzzle), launcher_solution)
     spend_bundle = SpendBundle([coin_spend], G2Element())
     lineage_proof = Program.to([parent_coin_id, launcher_amount])
     return lineage_proof, launcher_coin.name(), expected_conditions, spend_bundle
@@ -109,8 +110,8 @@ async def test_only_odd_coins_0(bt):
         farmed_coin.name(), launcher_amount, initial_singleton_puzzle, metadata, launcher_puzzle
     )
 
-    conditions = Program.to(condition_list)
-    coin_spend = CoinSpend(farmed_coin, ANYONE_CAN_SPEND_PUZZLE, conditions)
+    conditions = SerializedProgram.to(condition_list)
+    coin_spend = CoinSpend(farmed_coin, SerializedProgram.from_program(ANYONE_CAN_SPEND_PUZZLE), conditions)
     spend_bundle = SpendBundle.aggregate([launcher_spend_bundle, SpendBundle([coin_spend], G2Element())])
     coins_added, coins_removed, _ = await check_spend_bundle_validity(bt, blocks, spend_bundle)
 

@@ -721,12 +721,12 @@ class PoolWallet:
         )
         assert create_launcher_tx_record.spend_bundle is not None
 
-        genesis_launcher_solution: Program = Program.to([puzzle_hash, amount, pool_state_bytes])
+        genesis_launcher_solution = SerializedProgram.to([puzzle_hash, amount, pool_state_bytes])
 
         launcher_cs: CoinSpend = CoinSpend(
             launcher_coin,
             SerializedProgram.from_program(genesis_launcher_puz),
-            SerializedProgram.from_program(genesis_launcher_solution),
+            genesis_launcher_solution,
         )
         launcher_sb: SpendBundle = SpendBundle([launcher_cs], G2Element())
 

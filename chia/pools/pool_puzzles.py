@@ -206,14 +206,14 @@ def create_travel_spend(
                 last_coin_spend.coin.amount,
             ]
         )
-    full_solution: Program = Program.to([parent_info_list, current_singleton.amount, inner_sol])
+    full_solution = SerializedProgram.to([parent_info_list, current_singleton.amount, inner_sol])
     full_puzzle: Program = create_full_puzzle(inner_puzzle, launcher_coin.name())
 
     return (
         CoinSpend(
             current_singleton,
             SerializedProgram.from_program(full_puzzle),
-            SerializedProgram.from_program(full_solution),
+            full_solution,
         ),
         inner_puzzle,
     )

@@ -10,6 +10,7 @@ from clvm.casts import int_to_bytes
 from chia.types.announcement import Announcement
 from chia.types.blockchain_format.coin import Coin, coin_as_list
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.util.hash import std_hash
@@ -252,8 +253,8 @@ class CRCAT:
             dpuz,
             CoinSpend(
                 eve_coin,
-                eve_cat_puzzle,
-                Program.to(  # solve_cat
+                SerializedProgram.from_program(eve_cat_puzzle),
+                SerializedProgram.to(  # solve_cat
                     [
                         None,
                         optional_lineage_proof,
@@ -464,8 +465,8 @@ class CRCAT:
             announcements,
             CoinSpend(
                 self.coin,
-                self.construct_puzzle(inner_puzzle),
-                Program.to(  # solve_cat
+                SerializedProgram.from_program(self.construct_puzzle(inner_puzzle)),
+                SerializedProgram.to(  # solve_cat
                     [
                         solve_cr_layer(
                             proof_of_inclusions,

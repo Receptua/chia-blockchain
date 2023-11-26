@@ -7,6 +7,7 @@ from chia_rs import AugSchemeMPL, PrivateKey
 
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.condition_opcodes import ConditionOpcode
@@ -20,12 +21,12 @@ def test_debug_spend_bundle() -> None:
     pk = sk.get_g1()
     msg = bytes(32)
     sig = AugSchemeMPL.sign(sk, msg)
-    ACS = Program.to(15).curry(Program.to("hey").curry("now")).curry("brown", "cow")
+    ACS = SerializedProgram.from_program(Program.to(15).curry(Program.to("hey").curry("now")).curry("brown", "cow"))
     ACS_PH = ACS.get_tree_hash()
     coin: Coin = Coin(bytes32([0] * 32), ACS_PH, 3)
     child_coin: Coin = Coin(coin.name(), ACS_PH, 0)
     coin_bad_reveal: Coin = Coin(bytes32([0] * 32), bytes32([0] * 32), 0)
-    solution = Program.to(
+    solution = SerializedProgram.to(
         [
             [ConditionOpcode.AGG_SIG_UNSAFE, pk, msg],
             [ConditionOpcode.REMARK],
@@ -52,7 +53,7 @@ def test_debug_spend_bundle() -> None:
                 CoinSpend(
                     coin_bad_reveal,
                     ACS,
-                    Program.to(None),
+                    SerializedProgram.to(None),
                 ),
                 CoinSpend(
                     coin,
@@ -62,7 +63,7 @@ def test_debug_spend_bundle() -> None:
                 CoinSpend(
                     child_coin,
                     ACS,
-                    Program.to(None),
+                    SerializedProgram.to(None),
                 ),
             ],
             sig,

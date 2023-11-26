@@ -7,6 +7,7 @@ import pytest
 
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.util.ints import uint32, uint64
@@ -29,7 +30,9 @@ def get_record(wallet_id: uint32 = uint32(2)) -> SingletonRecord:
     inner_sol = Program.to([[51, inner_puz_hash, 1]])
     lineage_proof = LineageProof(launcher_id, inner_puz.get_tree_hash(), uint64(1))
     parent_sol = Program.to([lineage_proof.to_program(), 1, inner_sol])
-    parent_coinspend = CoinSpend(parent_coin, parent_puz, parent_sol)
+    parent_coinspend = CoinSpend(
+        parent_coin, SerializedProgram.from_program(parent_puz), SerializedProgram.from_program(parent_sol)
+    )
     pending = True
     removed_height = 0
     custom_data = "{'key': 'value'}"
@@ -80,10 +83,10 @@ class TestSingletonStore:
             assert record_by_id
 
             # Test adding a non-singleton will fail
-            inner_puz = Program.to(1)
+            inner_puz = SerializedProgram.to(1)
             inner_puz_hash = inner_puz.get_tree_hash()
             bad_coin = Coin(record.singleton_id, inner_puz_hash, 1)
-            inner_sol = Program.to([[51, inner_puz_hash, 1]])
+            inner_sol = SerializedProgram.to([[51, inner_puz_hash, 1]])
             bad_coinspend = CoinSpend(bad_coin, inner_puz, inner_sol)
             with pytest.raises(RuntimeError) as e_info:
                 await db.add_spend(uint32(2), bad_coinspend, uint32(10))

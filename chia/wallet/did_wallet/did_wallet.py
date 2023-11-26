@@ -14,6 +14,7 @@ from chia.server.ws_connection import WSChiaConnection
 from chia.types.announcement import Announcement
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.signing_mode import CHIP_0002_SIGN_MESSAGE_PREFIX, SigningMode
@@ -575,7 +576,7 @@ class DIDWallet:
         )
         parent_info = self.get_parent_for_coin(coin)
         assert parent_info is not None
-        fullsol = Program.to(
+        fullsol = SerializedProgram.to(
             [
                 [
                     parent_info.parent_name,
@@ -587,11 +588,13 @@ class DIDWallet:
             ]
         )
         # Create an additional spend to confirm the change on-chain
-        new_full_puzzle: Program = create_singleton_puzzle(
-            new_inner_puzzle,
-            self.did_info.origin_coin.name(),
+        new_full_puzzle = SerializedProgram.from_program(
+            create_singleton_puzzle(
+                new_inner_puzzle,
+                self.did_info.origin_coin.name(),
+            )
         )
-        new_full_sol = Program.to(
+        new_full_sol = SerializedProgram.to(
             [
                 [
                     coin.parent_coin_info,
@@ -603,7 +606,10 @@ class DIDWallet:
             ]
         )
         new_coin = Coin(coin.name(), new_full_puzzle.get_tree_hash(), coin.amount)
-        list_of_coinspends = [CoinSpend(coin, full_puzzle, fullsol), CoinSpend(new_coin, new_full_puzzle, new_full_sol)]
+        list_of_coinspends = [
+            CoinSpend(coin, SerializedProgram.from_program(full_puzzle), fullsol),
+            CoinSpend(new_coin, new_full_puzzle, new_full_sol),
+        ]
         unsigned_spend_bundle = SpendBundle(list_of_coinspends, G2Element())
         spend_bundle = await self.sign(unsigned_spend_bundle)
         if fee > 0:
@@ -684,13 +690,15 @@ class DIDWallet:
             innersol = Program.to([2, p2_solution, [], [], [], self.did_info.backup_ids])
         # full solution is (corehash parent_info my_amount innerpuz_reveal solution)
 
-        full_puzzle: Program = create_singleton_puzzle(
-            self.did_info.current_inner,
-            self.did_info.origin_coin.name(),
+        full_puzzle = SerializedProgram.from_program(
+            create_singleton_puzzle(
+                self.did_info.current_inner,
+                self.did_info.origin_coin.name(),
+            )
         )
         parent_info = self.get_parent_for_coin(coin)
         assert parent_info is not None
-        fullsol = Program.to(
+        fullsol = SerializedProgram.to(
             [
                 [
                     parent_info.parent_name,
@@ -782,13 +790,15 @@ class DIDWallet:
         innersol: Program = Program.to([1, p2_solution])
 
         # full solution is (corehash parent_info my_amount innerpuz_reveal solution)
-        full_puzzle: Program = create_singleton_puzzle(
-            innerpuz,
-            self.did_info.origin_coin.name(),
+        full_puzzle = SerializedProgram.from_program(
+            create_singleton_puzzle(
+                innerpuz,
+                self.did_info.origin_coin.name(),
+            )
         )
         parent_info = self.get_parent_for_coin(coin)
         assert parent_info is not None
-        fullsol = Program.to(
+        fullsol = SerializedProgram.to(
             [
                 [
                     parent_info.parent_name,
@@ -834,13 +844,15 @@ class DIDWallet:
         # full solution is (corehash parent_info my_amount innerpuz_reveal solution)
         innerpuz: Program = self.did_info.current_inner
 
-        full_puzzle: Program = create_singleton_puzzle(
-            innerpuz,
-            self.did_info.origin_coin.name(),
+        full_puzzle = SerializedProgram.from_program(
+            create_singleton_puzzle(
+                innerpuz,
+                self.did_info.origin_coin.name(),
+            )
         )
         parent_info = self.get_parent_for_coin(coin)
         assert parent_info is not None
-        fullsol = Program.to(
+        fullsol = SerializedProgram.to(
             [
                 [
                     parent_info.parent_name,
@@ -914,14 +926,16 @@ class DIDWallet:
         innersol = Program.to([1, p2_solution])
 
         # full solution is (corehash parent_info my_amount innerpuz_reveal solution)
-        full_puzzle: Program = create_singleton_puzzle(
-            innerpuz,
-            self.did_info.origin_coin.name(),
+        full_puzzle = SerializedProgram.from_program(
+            create_singleton_puzzle(
+                innerpuz,
+                self.did_info.origin_coin.name(),
+            )
         )
         parent_info = self.get_parent_for_coin(coin)
         assert parent_info is not None
 
-        fullsol = Program.to(
+        fullsol = SerializedProgram.to(
             [
                 [
                     parent_info.parent_name,
@@ -1029,13 +1043,15 @@ class DIDWallet:
         # full solution is (parent_info my_amount solution)
         assert self.did_info.current_inner is not None
         innerpuz: Program = self.did_info.current_inner
-        full_puzzle: Program = create_singleton_puzzle(
-            innerpuz,
-            self.did_info.origin_coin.name(),
+        full_puzzle = SerializedProgram.from_program(
+            create_singleton_puzzle(
+                innerpuz,
+                self.did_info.origin_coin.name(),
+            )
         )
         parent_info = self.get_parent_for_coin(coin)
         assert parent_info is not None
-        fullsol = Program.to(
+        fullsol = SerializedProgram.to(
             [
                 [
                     parent_info.parent_name,
@@ -1245,7 +1261,7 @@ class DIDWallet:
             return None
 
         origin = coins.copy().pop()
-        genesis_launcher_puz = SINGLETON_LAUNCHER_PUZZLE
+        genesis_launcher_puz = SerializedProgram.from_program(SINGLETON_LAUNCHER_PUZZLE)
         launcher_coin = Coin(origin.name(), genesis_launcher_puz.get_tree_hash(), amount)
 
         did_inner: Program = await self.get_new_did_innerpuz(launcher_coin.name())
@@ -1269,7 +1285,7 @@ class DIDWallet:
             origin_id=origin.name(),
         )
 
-        genesis_launcher_solution = Program.to([did_puzzle_hash, amount, bytes(0x80)])
+        genesis_launcher_solution = SerializedProgram.to([did_puzzle_hash, amount, bytes(0x80)])
 
         launcher_cs = CoinSpend(launcher_coin, genesis_launcher_puz, genesis_launcher_solution)
         launcher_sb = SpendBundle([launcher_cs], AugSchemeMPL.aggregate([]))
@@ -1351,14 +1367,14 @@ class DIDWallet:
         )
         innersol = Program.to([1, p2_solution])
         # full solution is (lineage_proof my_amount inner_solution)
-        fullsol = Program.to(
+        fullsol = SerializedProgram.to(
             [
                 [self.did_info.origin_coin.parent_coin_info, self.did_info.origin_coin.amount],
                 coin.amount,
                 innersol,
             ]
         )
-        list_of_coinspends = [CoinSpend(coin, full_puzzle, fullsol)]
+        list_of_coinspends = [CoinSpend(coin, SerializedProgram.from_program(full_puzzle), fullsol)]
         unsigned_spend_bundle = SpendBundle(list_of_coinspends, G2Element())
         return await self.sign(unsigned_spend_bundle)
 

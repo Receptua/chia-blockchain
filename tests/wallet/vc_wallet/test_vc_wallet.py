@@ -11,6 +11,7 @@ from chia.rpc.wallet_rpc_client import WalletRpcClient
 from chia.simulator.full_node_simulator import FullNodeSimulator
 from chia.types.blockchain_format.coin import coin_as_list
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.peer_info import PeerInfo
@@ -44,10 +45,12 @@ async def mint_cr_cat(
     proofs_checker: ProofsChecker = ProofsChecker(["foo", "bar"]),
 ) -> None:
     our_puzzle: Program = await wallet_0.get_new_puzzle()
-    cat_puzzle: Program = construct_cat_puzzle(
-        CAT_MOD,
-        tail.get_tree_hash(),
-        Program.to(1),
+    cat_puzzle = SerializedProgram.from_program(
+        construct_cat_puzzle(
+            CAT_MOD,
+            tail.get_tree_hash(),
+            Program.to(1),
+        )
     )
     CAT_AMOUNT_0 = uint64(100)
 
@@ -72,7 +75,7 @@ async def mint_cr_cat(
             CoinSpend(
                 cat_coin,
                 cat_puzzle,
-                Program.to(
+                SerializedProgram.to(
                     [
                         Program.to(
                             [

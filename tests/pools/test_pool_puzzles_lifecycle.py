@@ -26,6 +26,7 @@ from chia.pools.pool_puzzles import (
 from chia.pools.pool_wallet_info import PoolState
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.spend_bundle import SpendBundle
@@ -74,7 +75,7 @@ class TestPoolPuzzles(TestCase):
             secret_exponent_for_index(1).to_bytes(32, "big"),
         )
         pk: G1Element = G1Element.from_bytes(public_key_for_index(1, key_lookup))
-        starting_puzzle: Program = puzzle_for_pk(pk)
+        starting_puzzle = SerializedProgram.from_program(puzzle_for_pk(pk))
         starting_ph: bytes32 = starting_puzzle.get_tree_hash()
 
         # Get our starting standard coin created
@@ -144,7 +145,7 @@ class TestPoolPuzzles(TestCase):
         )
         # Creating solution for standard transaction
         delegated_puzzle: Program = puzzle_for_conditions(conditions)
-        full_solution: Program = solution_for_conditions(conditions)
+        full_solution = SerializedProgram.from_program(solution_for_conditions(conditions))
         starting_coinsol = CoinSpend(
             starting_coin,
             starting_puzzle,
@@ -254,8 +255,8 @@ class TestPoolPuzzles(TestCase):
         # construct coin solution for the p2_singleton coin
         bad_coinsol = CoinSpend(
             non_reward_p2_singleton,
-            p2_singleton_puz,
-            Program.to(
+            SerializedProgram.from_program(p2_singleton_puz),
+            SerializedProgram.to(
                 [
                     pooling_innerpuz.get_tree_hash(),
                     non_reward_p2_singleton.name(),

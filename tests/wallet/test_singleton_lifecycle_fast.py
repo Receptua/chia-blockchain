@@ -223,7 +223,7 @@ class SingletonWallet:
         solution = solve_puzzle(
             puzzle_db, puzzle_reveal, lineage_proof=self.lineage_proof, coin_amount=coin.amount, **kwargs
         )
-        return CoinSpend(coin, puzzle_reveal, solution)
+        return CoinSpend(coin, SerializedProgram.from_program(puzzle_reveal), SerializedProgram.from_program(solution))
 
     def update_state(self, puzzle_db: PuzzleDB, removals: List[CoinSpend]) -> int:
         state_change_count = 0
@@ -295,7 +295,9 @@ def launcher_conditions_and_spend_bundle(
         launcher_amount=launcher_amount,
         metadata=metadata,
     )
-    coin_spend = CoinSpend(launcher_coin, SerializedProgram.from_program(launcher_puzzle), solution)
+    coin_spend = CoinSpend(
+        launcher_coin, SerializedProgram.from_program(launcher_puzzle), SerializedProgram.from_program(solution)
+    )
     spend_bundle = SpendBundle([coin_spend], G2Element())
     return launcher_coin.name(), expected_conditions, spend_bundle
 
@@ -357,7 +359,7 @@ def claim_p2_singleton(
     p2_singleton_coin_spend = CoinSpend(
         p2_singleton_coin,
         SerializedProgram.from_program(p2_singleton_puzzle),
-        p2_singleton_solution,
+        SerializedProgram.from_program(p2_singleton_solution),
     )
     expected_p2_singleton_announcement = Announcement(p2_singleton_coin_name, b"$").name()
     singleton_conditions = [
@@ -415,8 +417,8 @@ def spend_coin_to_singleton(
         puzzle_db, farmed_coin.name(), launcher_amount, initial_singleton_puzzle, metadata, launcher_puzzle
     )
 
-    conditions = Program.to(condition_list)
-    coin_spend = CoinSpend(farmed_coin, ANYONE_CAN_SPEND_PUZZLE, conditions)
+    conditions = SerializedProgram.to(condition_list)
+    coin_spend = CoinSpend(farmed_coin, SerializedProgram.from_program(ANYONE_CAN_SPEND_PUZZLE), conditions)
     spend_bundle = SpendBundle.aggregate([launcher_spend_bundle, SpendBundle([coin_spend], G2Element())])
 
     additions, removals = coin_store.update_coin_store_for_spend_bundle(spend_bundle, now, MAX_BLOCK_COST_CLVM)

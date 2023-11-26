@@ -9,7 +9,7 @@ import pytest
 from chia_rs import G2Element
 
 from chia.types.blockchain_format.coin import Coin
-from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.condition_opcodes import ConditionOpcode
@@ -98,7 +98,7 @@ def create_spends(num: int) -> Tuple[List[CoinSpend], List[Coin]]:
     create_coin: List[Coin] = []
     rng = random.Random()
 
-    puzzle = Program.to(1)
+    puzzle = SerializedProgram.to(1)
     puzzle_hash = puzzle.get_tree_hash()
 
     for i in range(num):
@@ -107,7 +107,7 @@ def create_spends(num: int) -> Tuple[List[CoinSpend], List[Coin]]:
         coin = Coin(rand_hash(rng), puzzle_hash, 1000)
         new_coin = Coin(coin.name(), target_ph, 1)
         create_coin.append(new_coin)
-        spends.append(CoinSpend(coin, puzzle, Program.to(conditions)))
+        spends.append(CoinSpend(coin, puzzle, SerializedProgram.to(conditions)))
 
     return spends, create_coin
 

@@ -8,6 +8,7 @@ from chia_rs import AugSchemeMPL, G1Element, G2Element, PrivateKey
 from chia.clvm.spend_sim import CostLogger, SimClient, SpendSim, sim_and_client
 from chia.consensus.default_constants import DEFAULT_CONSTANTS
 from chia.types.blockchain_format.program import INFINITE_COST, Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.condition_opcodes import ConditionOpcode
@@ -125,7 +126,9 @@ class TestClawbackLifecycle:
                     ],
                 ]
             )
-            coin_spend = CoinSpend(starting_coin, sender_puz, sender_sol)
+            coin_spend = CoinSpend(
+                starting_coin, SerializedProgram.from_program(sender_puz), SerializedProgram.from_program(sender_sol)
+            )
             sig = self.sign_coin_spend(coin_spend, sender_index)
             spend_bundle = SpendBundle([coin_spend], sig)
 
@@ -152,7 +155,9 @@ class TestClawbackLifecycle:
             # Fail an early claim spend
             recipient_sol = solution_for_conditions([[ConditionOpcode.CREATE_COIN, recipient_ph, amount]])
             claim_sol = create_merkle_solution(timelock, sender_ph, recipient_ph, recipient_puz, recipient_sol)
-            coin_spend = CoinSpend(clawback_coin, cb_puzzle, claim_sol)
+            coin_spend = CoinSpend(
+                clawback_coin, SerializedProgram.from_program(cb_puzzle), SerializedProgram.from_program(claim_sol)
+            )
             sig = self.sign_coin_spend(coin_spend, recipient_index)
             spend_bundle = SpendBundle([coin_spend], sig)
 
@@ -184,7 +189,9 @@ class TestClawbackLifecycle:
             # create another clawback coin and claw it back to a "cold wallet"
             cold_ph = bytes32([1] * 32)
             new_coin = (await sim_client.get_coin_records_by_puzzle_hash(sender_ph, include_spent_coins=False))[0].coin
-            coin_spend = CoinSpend(new_coin, sender_puz, sender_sol)
+            coin_spend = CoinSpend(
+                new_coin, SerializedProgram.from_program(sender_puz), SerializedProgram.from_program(sender_sol)
+            )
             sig = self.sign_coin_spend(coin_spend, sender_index)
             spend_bundle = SpendBundle([coin_spend], sig)
 
@@ -203,7 +210,9 @@ class TestClawbackLifecycle:
 
             sender_claw_sol = solution_for_conditions([[ConditionOpcode.CREATE_COIN, cold_ph, amount]])
             claw_sol = create_merkle_solution(timelock, sender_ph, recipient_ph, sender_puz, sender_claw_sol)
-            coin_spend = CoinSpend(new_cb_coin, cb_puzzle, claw_sol)
+            coin_spend = CoinSpend(
+                new_cb_coin, SerializedProgram.from_program(cb_puzzle), SerializedProgram.from_program(claw_sol)
+            )
             sig = self.sign_coin_spend(coin_spend, sender_index)
             spend_bundle = SpendBundle([coin_spend], sig)
 

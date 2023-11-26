@@ -9,6 +9,7 @@ from clvm.casts import int_to_bytes
 from chia.clvm.spend_sim import CostLogger, SimClient, SpendSim, sim_and_client
 from chia.types.blockchain_format.coin import Coin
 from chia.types.blockchain_format.program import Program
+from chia.types.blockchain_format.serialized_program import SerializedProgram
 from chia.types.blockchain_format.sized_bytes import bytes32
 from chia.types.coin_spend import CoinSpend
 from chia.types.mempool_inclusion_status import MempoolInclusionStatus
@@ -224,7 +225,7 @@ class TestCATLifecycle:
             )
 
             # Mint some value
-            temp_p = Program.to(1)
+            temp_p = SerializedProgram.to(1)
             temp_ph: bytes32 = temp_p.get_tree_hash()
             await sim.farm_block(temp_ph)
             acs_coin: Coin = (await sim_client.get_coin_records_by_puzzle_hash(temp_ph, include_spent_coins=False))[
@@ -235,7 +236,7 @@ class TestCATLifecycle:
                     CoinSpend(
                         acs_coin,
                         temp_p,
-                        Program.to([]),
+                        SerializedProgram.to([]),
                     )
                 ],
                 G2Element(),
@@ -361,7 +362,7 @@ class TestCATLifecycle:
     @pytest.mark.anyio
     async def test_genesis_by_id(self, cost_logger, consensus_mode):
         async with sim_and_client() as (sim, sim_client):
-            standard_acs = Program.to(1)
+            standard_acs = SerializedProgram.to(1)
             standard_acs_ph: bytes32 = standard_acs.get_tree_hash()
             await sim.farm_block(standard_acs_ph)
 
@@ -373,7 +374,11 @@ class TestCATLifecycle:
 
             await sim_client.push_tx(
                 SpendBundle(
-                    [CoinSpend(starting_coin, standard_acs, Program.to([[51, cat_ph, starting_coin.amount]]))],
+                    [
+                        CoinSpend(
+                            starting_coin, standard_acs, SerializedProgram.to([[51, cat_ph, starting_coin.amount]])
+                        )
+                    ],
                     G2Element(),
                 )
             )
@@ -403,7 +408,7 @@ class TestCATLifecycle:
     @pytest.mark.anyio
     async def test_genesis_by_puzhash(self, cost_logger, consensus_mode):
         async with sim_and_client() as (sim, sim_client):
-            standard_acs = Program.to(1)
+            standard_acs = SerializedProgram.to(1)
             standard_acs_ph: bytes32 = standard_acs.get_tree_hash()
             await sim.farm_block(standard_acs_ph)
 
@@ -415,7 +420,11 @@ class TestCATLifecycle:
 
             await sim_client.push_tx(
                 SpendBundle(
-                    [CoinSpend(starting_coin, standard_acs, Program.to([[51, cat_ph, starting_coin.amount]]))],
+                    [
+                        CoinSpend(
+                            starting_coin, standard_acs, SerializedProgram.to([[51, cat_ph, starting_coin.amount]])
+                        )
+                    ],
                     G2Element(),
                 )
             )
@@ -513,7 +522,7 @@ class TestCATLifecycle:
             signature = AugSchemeMPL.sign(sk, (int_to_bytes(1) + coin.name() + sim.defaults.AGG_SIG_ME_ADDITIONAL_DATA))
 
             # Need something to fund the minting
-            temp_p = Program.to(1)
+            temp_p = SerializedProgram.to(1)
             temp_ph: bytes32 = temp_p.get_tree_hash()
             await sim.farm_block(temp_ph)
             acs_coin: Coin = (await sim_client.get_coin_records_by_puzzle_hash(temp_ph, include_spent_coins=False))[
@@ -524,7 +533,7 @@ class TestCATLifecycle:
                     CoinSpend(
                         acs_coin,
                         temp_p,
-                        Program.to([]),
+                        SerializedProgram.to([]),
                     )
                 ],
                 G2Element(),
@@ -557,7 +566,7 @@ class TestCATLifecycle:
     @pytest.mark.anyio
     async def test_delegated_tail(self, cost_logger, consensus_mode):
         async with sim_and_client() as (sim, sim_client):
-            standard_acs = Program.to(1)
+            standard_acs = SerializedProgram.to(1)
             standard_acs_ph: bytes32 = standard_acs.get_tree_hash()
             await sim.farm_block(standard_acs_ph)
 
@@ -569,7 +578,11 @@ class TestCATLifecycle:
 
             await sim_client.push_tx(
                 SpendBundle(
-                    [CoinSpend(starting_coin, standard_acs, Program.to([[51, cat_ph, starting_coin.amount]]))],
+                    [
+                        CoinSpend(
+                            starting_coin, standard_acs, SerializedProgram.to([[51, cat_ph, starting_coin.amount]])
+                        )
+                    ],
                     G2Element(),
                 )
             )
