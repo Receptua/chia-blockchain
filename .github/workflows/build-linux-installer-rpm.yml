@@ -366,8 +366,10 @@ jobs:
         mode:
         - name: GUI
           file: chia-blockchain-[0,1,2,3,4,5,6,7,8,9]*.rpm
+          package: chia-blockchain
         - name: CLI
           file: chia-blockchain-cli-[0,1,2,3,4,5,6,7,8,9]*.rpm
+          package: chia-blockchain-cli
 
     steps:
     - uses: Chia-Network/actions/clean-workspace@main
@@ -387,3 +389,15 @@ jobs:
     - name: Run chia version
       run: |
         chia version
+
+    - name: Verify /opt/chia present
+      run: |
+        [ -e /opt/chia ]
+
+    - name: Remove package
+      run: |
+        yum remove -y ${{ matrix.mode.package }}
+
+    - name: Verify /opt/chia not present
+      run: |
+        [ ! -e /opt/chia ]
